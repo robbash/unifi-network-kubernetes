@@ -39,8 +39,11 @@ kubectl create secret generic unifi-secrets -n unifi \
 
 Run `kubectl apply -f deployment.yaml`.
 
-If you want to expose it on the internet using Nginx Ingress, run `kubectl apply
--f ingress.yaml`
+If you want to expose it on the internet using Envoy Gateway, run `kubectl apply
+-f httproute.yaml`. Since we need to skip validation of the backend tls cert,
+there's a bit of extra setup with the `Backend` resource. Also, remember to
+enable the [`Backend`](https://gateway.envoyproxy.io/docs/tasks/traffic/backend/#enable-backend)
+API.
 
 ## Connect AP
 

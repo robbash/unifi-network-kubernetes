@@ -1,0 +1,37 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: unifi-httproute
+  namespace: unifi
+spec:
+  parentRefs:
+  - name: gateway
+    kind: Gateway
+    group: gateway.networking.k8s.io
+    namespace: envoy-gateway-system
+    sectionName: https
+  hostnames:
+  - network.sternberg.dev
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - group: gateway.envoyproxy.io
+      kind: Backend
+      name: unifi-tls-backend
+      namespace: unifi
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: Backend
+metadata:
+  name: unifi-tls-backend
+  namespace: unifi
+spec:
+  endpoints:
+    - fqdn:
+        hostname: unifi-controller.unifi.svc.cluster.local
+        port: 8443
+  tls:
+    insecureSkipVerify: true
