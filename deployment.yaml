@@ -88,6 +88,7 @@ spec:
                 name: unifi-secrets
           image: linuxserver/unifi-network-application
           name: unifi-controller
+          imagePullPolicy: "Always"
           ports:
             - containerPort: 3478
               protocol: UDP
