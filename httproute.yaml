@@ -32,6 +32,6 @@ spec:
   endpoints:
     - fqdn:
         hostname: unifi-controller.unifi.svc.cluster.local
-        port: 8443
+        port: 443
   tls:
     insecureSkipVerify: true

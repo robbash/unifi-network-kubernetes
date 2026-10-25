@@ -1,111 +1,73 @@
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  creationTimestamp: null
-  labels:
-    app: unifi
-  name: unifi
-  namespace: unifi
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: local-path
-  resources:
-    requests:
-      storage: 2Gi
-status: {}
----
-apiVersion: v1
-kind: Service
-metadata:
-  creationTimestamp: null
-  labels:
-    app: unifi-controller
-  name: unifi-controller
-  namespace: unifi
-spec:
-  ports:
-    - name: "3478"
-      port: 3478
-      protocol: UDP
-      targetPort: 3478
-    - name: "10001"
-      port: 10001
-      protocol: UDP
-      targetPort: 10001
-    - name: "8080"
-      port: 8080
-      targetPort: 8080
-    - name: "8081"
-      port: 8081
-      targetPort: 8081
-    - name: "8443"
-      port: 8443
-      targetPort: 8443
-    - name: "8843"
-      port: 8843
-      targetPort: 8843
-    - name: "8880"
-      port: 8880
-      targetPort: 8880
-    - name: "6789"
-      port: 6789
-      targetPort: 6789
-  selector:
-    app: unifi-controller
-  type: LoadBalancer
-  # loadBalancerIP: 192.168.1.10
----
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
-  labels:
-    app: unifi-controller
-  name: unifi-controller
+  name: unifi-os-server
   namespace: unifi
+  labels:
+    app: unifi-os-server
 spec:
-  replicas: 1
-  serviceName: unifi-controller
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
-      app: unifi-controller
+      app: unifi-os-server
   template:
     metadata:
-      creationTimestamp: null
       labels:
-        app: unifi-controller
+        app: unifi-os-server
     spec:
       containers:
-        - env:
-            - name: MEM_LIMIT
-              value: '1024'
-            - name: PGID
-              value: "1000"
-            - name: PUID
-              value: "1000"
-          envFrom:
-            - secretRef:
-                name: unifi-secrets
-          image: linuxserver/unifi-network-application
-          name: unifi-controller
-          imagePullPolicy: "Always"
-          ports:
-            - containerPort: 3478
-              protocol: UDP
-            - containerPort: 10001
-              protocol: UDP
-            - containerPort: 8080
-            - containerPort: 8081
-            - containerPort: 8443
-            - containerPort: 8843
-            - containerPort: 8880
-            - containerPort: 6789
+        - name: unifi-os-server
+          image: ghcr.io/lemker/unifi-os-server:latest
+          env:
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: UOS_SYSTEM_IP
+              value: "network.sternberg.dev"
+          securityContext:
+            privileged: true
+          lifecycle:
+            postStart:
+              exec:
+                command: ["/bin/bash", "-c", "echo $HOST_IP host.docker.internal >> /etc/hosts"]
           volumeMounts:
-            - mountPath: /config
-              name: unifi
-      restartPolicy: Always
+            - name: unifi-os-server-data
+              mountPath: /persistent
+              subPath: persistent
+            - name: unifi-os-server-data
+              mountPath: /var/log
+              subPath: log
+            - name: unifi-os-server-data
+              mountPath: /data
+              subPath: data
+            - name: unifi-os-server-data
+              mountPath: /srv
+              subPath: srv
+            - name: unifi-os-server-data
+              mountPath: /var/lib/unifi
+              subPath: unifi
+            - name: unifi-os-server-data
+              mountPath: /var/lib/mongodb
+              subPath: mongodb
+            - name: unifi-os-server-data
+              mountPath: /etc/rabbitmq/ssl
+              subPath: rabbitmq
+          ports:
+            - containerPort: 11084
+              hostPort: 11084
+              hostIP: 127.0.0.1
+          livenessProbe:
+            httpGet:
+              path: /api/ping
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 60
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
       volumes:
-        - name: unifi
+        - name: unifi-os-server-data
           persistentVolumeClaim:
-            claimName: unifi
-
+            claimName: unifi-os-server-pvc
